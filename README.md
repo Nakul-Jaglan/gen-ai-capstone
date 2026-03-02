@@ -180,19 +180,16 @@ Two models were evaluated:
 
 ```
 gen-ai-capstone/
-├── data/
-│   └── 02.csv                    # Raw dataset
+├── app.py                    # Streamlit web application
+├── 02.csv                    # Raw dataset
+├── rf_model_new.joblib       # Trained Random Forest model
+├── minmaxscaler.joblib       # Saved MinMaxScaler (reference artifact)
 ├── notebooks/
 │   └── GenAI_Capstone_V2.ipynb   # EDA, model training & evaluation notebook
-├── scripts/
-│   └── app.py                    # Streamlit web application
-├── models/
-│   ├── rf_model_new.joblib       # Trained Random Forest model
-│   └── minmaxscaler.joblib       # Saved MinMaxScaler (reference artifact)
 ├── assets/
 │   └── report/
 │       └── report.tex            # LaTeX report
-├── requirements.txt              # Python dependencies
+├── requirements.txt          # Python dependencies
 ├── .gitignore
 └── README.md
 ```
@@ -235,7 +232,7 @@ pip install -r requirements.txt
 ## Running the App
 
 ```bash
-streamlit run scripts/app.py
+streamlit run app.py
 ```
 
 The app opens at **http://localhost:8501** by default.
@@ -257,4 +254,4 @@ The app is designed to deploy on:
 | **Hugging Face Spaces** | Use `Streamlit` SDK, upload files, set `app.py` as main |
 | **Render** | Add `streamlit run app.py --server.port $PORT --server.headless true` as start command |
 
-> Make sure `data/02.csv`, `models/rf_model_new.joblib`, and `models/minmaxscaler.joblib` are committed to the repo or uploaded to the hosting platform — the app requires them at runtime.
+> Make sure `02.csv`, `rf_model_new.joblib`, and `minmaxscaler.joblib` are committed to the repo or uploaded to the hosting platform — the app requires them at runtime.
