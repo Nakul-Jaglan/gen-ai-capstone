@@ -180,16 +180,16 @@ Two models were evaluated:
 
 ```
 gen-ai-capstone/
-├── app.py                    # Streamlit web application
-├── 02.csv                    # Raw dataset
-├── rf_model_new.joblib       # Trained Random Forest model
-├── minmaxscaler.joblib       # Saved MinMaxScaler (reference artifact)
+├── app.py                                # Streamlit web application
+├── 02.csv                                # Raw dataset
+├── rf_model_new.joblib                   # Trained Random Forest model
+├── minmaxscaler.joblib                   # Saved MinMaxScaler (reference artifact)
 ├── notebooks/
-│   └── GenAI_Capstone_V2.ipynb   # EDA, model training & evaluation notebook
+│   └── GenAI_Capstone_V2.ipynb           # EDA, model training & evaluation notebook
 ├── assets/
 │   └── report/
-│       └── report.tex            # LaTeX report
-├── requirements.txt          # Python dependencies
+│       └── report.tex                    # LaTeX report
+├── requirements.txt                      # Python dependencies
 ├── .gitignore
 └── README.md
 ```
