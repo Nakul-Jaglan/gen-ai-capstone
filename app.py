@@ -223,62 +223,112 @@ div.stButton > button:hover {
 #  DATA LOADING & PREPROCESSING  (cached)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 @st.cache_resource(show_spinner="Loading model & data …")
-def load_pipeline():
-    """Rebuild the exact same preprocessing pipeline from the notebook."""
-
+def load_pipeline() -> dict:
+    """Rebuild the exact same preprocessing pipeline from the notebook.
+    This function reads the dataset, cleans it, fits label encoders,
+    and scales numerical features to return a finalized pipeline dictionary.
+    """
+    
+    # 1. Load Data
     data = pd.read_csv("02.csv", low_memory=False)
 
+    # 2. Drop columns that are not useful or have too many missing values
     drop_cols = [
-        "No", "UnitPrice", "PricePerTsubo", "Period", "Remarks",
-        "Renovation", "FloorPlan", "Purpose", "Use", "MunicipalityCode",
-        "TimeToNearestStation", "MaxTimeToNearestStation",
-        "FrontageIsGreaterFlag", "AreaIsGreaterFlag",
-        "TotalFloorAreaIsGreaterFlag", "Prefecture",
+        "No",
+        "UnitPrice",
+        "PricePerTsubo",
+        "Period",
+        "Remarks",
+        "Renovation",
+        "FloorPlan",
+        "Purpose",
+        "Use",
+        "MunicipalityCode",
+        "TimeToNearestStation",
+        "MaxTimeToNearestStation",
+        "FrontageIsGreaterFlag",
+        "AreaIsGreaterFlag",
+        "TotalFloorAreaIsGreaterFlag",
+        "Prefecture",
     ]
     data.drop(columns=drop_cols, inplace=True)
 
+    # 3. Filter out Agricultural Land instances
     data = data[data["Type"] != "Agricultural Land"].copy()
 
+    # 4. Handle Missing Values
     na_cols = [
-        "Region", "DistrictName", "NearestStation", "MinTimeToNearestStation",
-        "LandShape", "Frontage", "TotalFloorArea", "BuildingYear", "Structure",
-        "Classification", "Breadth", "CityPlanning", "CoverageRatio", "FloorAreaRatio",
+        "Region",
+        "DistrictName",
+        "NearestStation",
+        "MinTimeToNearestStation",
+        "LandShape",
+        "Frontage",
+        "TotalFloorArea",
+        "BuildingYear",
+        "Structure",
+        "Classification",
+        "Breadth",
+        "CityPlanning",
+        "CoverageRatio",
+        "FloorAreaRatio",
     ]
     data.dropna(subset=na_cols, inplace=True)
     data.dropna(subset=["Direction"], inplace=True)
 
+    # 5. Define column types for the model
     cat_cols = [
-        "Type", "Region", "Municipality", "DistrictName", "NearestStation",
-        "LandShape", "Structure", "Classification", "CityPlanning", "Direction",
+        "Type",
+        "Region",
+        "Municipality",
+        "DistrictName",
+        "NearestStation",
+        "LandShape",
+        "Structure",
+        "Classification",
+        "CityPlanning",
+        "Direction",
     ]
     num_cols = [
-        "Frontage", "TotalFloorArea", "BuildingYear", "Breadth",
-        "CoverageRatio", "FloorAreaRatio", "MinTimeToNearestStation", "Area",
+        "Frontage",
+        "TotalFloorArea",
+        "BuildingYear",
+        "Breadth",
+        "CoverageRatio",
+        "FloorAreaRatio",
+        "MinTimeToNearestStation",
+        "Area",
     ]
 
+    # 6. Store unique categorical values for UI
     unique_values = {}
     for col in cat_cols:
         unique_values[col] = sorted(data[col].dropna().unique().tolist())
 
     analysis_data = data.copy()
 
+    # 7. Apply Label Encoding to categorical features
     label_encoders = {}
     for col in cat_cols:
         le = LabelEncoder()
         data[col] = le.fit_transform(data[col].astype(str))
         label_encoders[col] = le
 
+    # 8. Scale Numerical Variables
     scaler1 = MinMaxScaler()
     data[num_cols] = scaler1.fit_transform(data[num_cols])
 
+    # 9. Feature Engineering: calculate the age of the building
     data["AgeOfBuilding"] = data["Year"] - data["BuildingYear"]
 
+    # 10. Final Scaling on Extended Numerical Features
     num_cols_ext = num_cols + ["AgeOfBuilding"]
     scaler2 = MinMaxScaler()
     data[num_cols_ext] = scaler2.fit_transform(data[num_cols_ext])
 
     feature_cols = [c for c in data.columns if c != "TradePrice"]
 
+    # 11. Load Trained Model
     model = joblib.load("rf_model_new.joblib")
 
     return {
