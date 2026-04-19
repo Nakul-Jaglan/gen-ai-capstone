@@ -37,6 +37,8 @@ Implemented advanced GenAI topics:
 - Guardrail node injects low-confidence warning on weak retrieval
 
 ---
+## Hosted Link
+https://gen-ai-capstone-nakul.streamlit.app/
 
 ## 2. Repository Structure and Code Quality
 
