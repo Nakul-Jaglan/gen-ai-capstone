@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Hybrid RAG engine combining optional vector-embedding retrieval with lexical (BM25-like) scoring."""
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -46,6 +46,7 @@ class RAGEngine:
         self.embedding_available = False
 
     def _knowledge_files(self) -> list[Path]:
+        """Return sorted Markdown knowledge files, falling back to README.md if none are found."""
         files = sorted(self.settings.knowledge_dir.glob("*.md"))
         if files:
             return files
@@ -58,6 +59,7 @@ class RAGEngine:
 
     @staticmethod
     def _file_signature(files: Iterable[Path]) -> str:
+        """Compute a SHA-256 fingerprint of file names, sizes, and modification times."""
         payload = []
         for path in files:
             stat = path.stat()
@@ -112,7 +114,23 @@ class RAGEngine:
         norms[norms == 0] = 1e-12
         return vectors / norms
 
+    def _compute_vector_scores(self, query: str) -> np.ndarray:
+        """Return cosine-similarity scores between the query and all indexed chunks.
+        Falls back to an all-zeros array when embeddings are unavailable."""
+        scores = np.zeros(len(self.chunks), dtype=np.float32)
+        if not (self.embedding_available and self.normalized_embeddings.size and self.llm.configured):
+            return scores
+        try:
+            q_vec = self.llm.embed_texts([query])
+            if q_vec.size:
+                q_norm = q_vec[0] / (np.linalg.norm(q_vec[0]) + 1e-12)
+                scores = self.normalized_embeddings @ q_norm
+        except LLMError:
+            pass
+        return scores
+
     def _build_chunks(self) -> list[Chunk]:
+        """Read knowledge files and split them into overlapping word-level chunks."""
         files = self._knowledge_files()
         all_chunks: list[Chunk] = []
         chunk_id = 0
@@ -173,6 +191,7 @@ class RAGEngine:
         )
 
     def search(self, query: str, top_k: int | None = None) -> list[RetrievalHit]:
+        """Retrieve the top-k most relevant chunks for a query using hybrid scoring."""
         if not self.chunks:
             self.ensure_index()
         if not self.chunks:
@@ -180,16 +199,7 @@ class RAGEngine:
 
         k = top_k or self.settings.top_k
         lexical_scores = np.array([self._lexical_score(query, c.text) for c in self.chunks], dtype=np.float32)
-
-        vector_scores = np.zeros(len(self.chunks), dtype=np.float32)
-        if self.embedding_available and self.normalized_embeddings.size and self.llm.configured:
-            try:
-                q_vec = self.llm.embed_texts([query])
-                if q_vec.size:
-                    q_norm = q_vec[0] / (np.linalg.norm(q_vec[0]) + 1e-12)
-                    vector_scores = self.normalized_embeddings @ q_norm
-            except LLMError:
-                vector_scores = np.zeros(len(self.chunks), dtype=np.float32)
+        vector_scores = self._compute_vector_scores(query)
 
         alpha = float(self.settings.retrieval_alpha)
         if self.embedding_available and np.any(vector_scores):
@@ -234,6 +244,7 @@ class RAGEngine:
         return hits
 
     def build_context_block(self, hits: list[RetrievalHit]) -> str:
+        """Format retrieval hits into a numbered context block for the LLM prompt."""
         if not hits:
             return ""
 

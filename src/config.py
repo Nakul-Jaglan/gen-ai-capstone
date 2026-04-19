@@ -1,3 +1,4 @@
+"""Centralised configuration for the Real Estate Concierge application."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ def load_env_file(env_path: Path) -> None:
 
 @dataclass(frozen=True)
 class Settings:
+    """Immutable settings object populated from environment variables and .env file."""
     project_root: Path
     data_path: Path
     model_path: Path
@@ -47,6 +49,10 @@ class Settings:
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    """
+    Build and cache a Settings instance.
+    Loads variables from the project-root .env file before reading environment.
+    """
     project_root = Path(__file__).resolve().parents[1]
     env_path = project_root / ".env"
     load_env_file(env_path)

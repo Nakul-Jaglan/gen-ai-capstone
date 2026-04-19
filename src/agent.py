@@ -274,6 +274,39 @@ class RealEstateAgent:
         )
         return "\n".join(lines)
 
+    def _build_reason_prompt(
+        self,
+        question: str,
+        context_block: str,
+        prediction: float | None,
+        prediction_warnings: list[str],
+        analysis_answer: str,
+    ) -> str:
+        """Compose the structured prompt sent to the LLM during the reason node."""
+        price_line = (
+            f"Predicted price = JPY {prediction:,.0f}" if prediction is not None else "No pricing output."
+        )
+        context_text = context_block if context_block else "No retrieved context available."
+        analytics_text = analysis_answer if analysis_answer else "No analytics output."
+        warnings_text = prediction_warnings if prediction_warnings else "None"
+
+        return (
+            "User question:\n"
+            f"{question}\n\n"
+            "Retrieved context:\n"
+            f"{context_text}\n\n"
+            "Pricing tool output:\n"
+            f"{price_line}\n"
+            f"Pricing warnings = {warnings_text}\n\n"
+            "Analytics tool output:\n"
+            f"{analytics_text}\n\n"
+            "Instructions:\n"
+            "1) Answer in concise professional style.\n"
+            "2) Prioritize tool outputs when they are available.\n"
+            "3) If evidence is weak or missing, explicitly say uncertainty and avoid unsupported claims.\n"
+            "4) If pricing output exists, include it in the final answer.\n"
+        )
+
     def _reason_node(self, state: AgentState) -> AgentState:
         route = state.get("route", "knowledge")
         question = state.get("question", "")
@@ -302,22 +335,12 @@ class RealEstateAgent:
             return {"draft_answer": guidance, "warnings": warnings + prediction_warnings}
 
         context_block = self.rag.build_context_block(hits)
-
-        prompt = (
-            "User question:\n"
-            f"{question}\n\n"
-            "Retrieved context:\n"
-            f"{context_block if context_block else 'No retrieved context available.'}\n\n"
-            "Pricing tool output:\n"
-            f"{f'Predicted price = JPY {prediction:,.0f}' if prediction is not None else 'No pricing output.'}\n"
-            f"Pricing warnings = {prediction_warnings if prediction_warnings else 'None'}\n\n"
-            "Analytics tool output:\n"
-            f"{analysis_answer if analysis_answer else 'No analytics output.'}\n\n"
-            "Instructions:\n"
-            "1) Answer in concise professional style.\n"
-            "2) Prioritize tool outputs when they are available.\n"
-            "3) If evidence is weak or missing, explicitly say uncertainty and avoid unsupported claims.\n"
-            "4) If pricing output exists, include it in the final answer.\n"
+        prompt = self._build_reason_prompt(
+            question=question,
+            context_block=context_block,
+            prediction=prediction,
+            prediction_warnings=prediction_warnings,
+            analysis_answer=analysis_answer,
         )
 
         system_prompt = (
