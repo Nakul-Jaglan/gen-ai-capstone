@@ -245,6 +245,10 @@ class RealEstateAgent:
         }
 
     def _deterministic_fallback(self, state: AgentState) -> str:
+        """
+        Fallback logic when the LLM is not configured or fails to generate an answer.
+        Returns a structured summary of available data (predictions, retrieval hits).
+        """
         hits = state.get("retrieval_hits", [])
         prediction = state.get("prediction_jpy")
         question = state.get("question", "")
@@ -371,6 +375,10 @@ class RealEstateAgent:
         }
 
     def ask(self, question: str, property_payload: dict[str, Any] | None = None) -> AgentResult:
+        """
+        Process a user question and optional property payload through the Agent graph.
+        Returns an AgentResult containing the generated answer, confidence, and other metadata.
+        """
         start = time.perf_counter()
         state: AgentState = {
             "question": question,

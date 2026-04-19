@@ -198,6 +198,10 @@ div[data-testid="stButton"] > button:active {
 
 @st.cache_resource(show_spinner="Preparing assistant...")
 def load_assistant() -> tuple[RealEstateAgent, LLMClient]:
+    """
+    Load the required components for the Real Estate Concierge assistant.
+    Initializes pricing engine, RAG engine, LLM client, and the main agent orchestrator.
+    """
     settings = get_settings()
 
     pricing = PricingEngine(settings)
