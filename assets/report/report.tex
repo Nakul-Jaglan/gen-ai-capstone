@@ -127,36 +127,6 @@ The objective of this phase is to design and implement a complete Agentic GenAI 
 \end{enumerate}
 
 \section{System Overview}
-\subsection{High-Level Architecture}
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-  node distance=1.2cm and 1.6cm,
-  box/.style={rectangle, rounded corners=4pt, minimum width=2.9cm, minimum height=0.9cm, align=center, draw=PrimaryBlue, thick, fill=SoftBlue, text=DarkGray, font=\small\bfseries},
-  arr/.style={-{Stealth[length=5pt]}, thick, draw=AccentBlue}
-]
-
-\node[box] (user) {User (Streamlit UI)};
-\node[box, right=of user] (route) {LangGraph Route Node};
-\node[box, right=of route] (retrieve) {RAG Retrieve Node};
-\node[box, below=of retrieve] (pricing) {Pricing Tool Node\\(Random Forest)};
-\node[box, right=of retrieve] (reason) {Groq LLM\\(llama-3.1-8b-instant)\\Reason Node};
-\node[box, right=of reason] (guard) {Guardrail Node};
-\node[box, below=of route] (index) {Knowledge Index\\(Lexical Active, Vector-Ready)};
-
-\draw[arr] (user) -- (route);
-\draw[arr] (route) -- (retrieve);
-\draw[arr] (retrieve) -- (reason);
-\draw[arr] (retrieve) -- (pricing);
-\draw[arr] (pricing) -| (reason);
-\draw[arr] (reason) -- (guard);
-\draw[arr] (index) -- (retrieve);
-\draw[arr] (guard) |- (user);
-
-\end{tikzpicture}
-\caption{Agentic workflow with retrieval, tool invocation, generation, and guardrails}
-\label{fig:architecture}
-\end{figure}
 
 \subsection{Component Responsibilities}
 \begin{tabularx}{\linewidth}{@{}>{\bfseries}lX@{}}
