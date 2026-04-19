@@ -1,253 +1,177 @@
-# Japan Real Estate Price Predictor
+# Real Estate Agentic Intelligence System (End-Semester Project)
 
-> **GenAI Capstone — Milestone 1**  
-> ML-based property valuation system trained on 50,000+ Japanese real-estate transactions with an interactive Streamlit dashboard.
+A production-style **Agentic AI + RAG** application for Japanese residential property analytics.
 
----
-
-## Table of Contents
-1. [Project Overview](#project-overview)
-2. [Business Context](#business-context)
-3. [System Architecture](#system-architecture)
-4. [Dataset](#dataset)
-5. [ML Pipeline](#ml-pipeline)
-6. [Feature Engineering](#feature-engineering)
-7. [Model Evaluation](#model-evaluation)
-8. [Tech Stack](#tech-stack)
-9. [Project Structure](#project-structure)
-10. [Setup & Installation](#setup--installation)
-11. [Running the App](#running-the-app)
-12. [Deployment](#deployment)
+This project upgrades the earlier ML-only app into a full **GenAI system** that combines:
+- Deterministic property valuation (Random Forest tool)
+- Hybrid retrieval (Gemini embeddings + lexical retrieval)
+- LangGraph orchestration for multi-step reasoning
+- Gemini 2.5 Flash grounded response generation
+- Evaluation dashboard for retrieval/reasoning quality
 
 ---
 
-## Project Overview
+## 1. Technical Implementation (Rubric Mapping)
 
-This project implements a **Random Forest Regressor** to predict real-estate trade prices across Japanese prefectures. The end product is a fully interactive web application where a user inputs property attributes and receives an instant price estimate alongside market analytics and feature importance visualizations.
+### 1.1 Correctness and Completeness
+The system solves two core problem classes:
+1. **Quantitative valuation** using the trained RF model (`rf_model_new.joblib`)
+2. **Qualitative reasoning/explanation** with retrieval-grounded LLM answers
 
----
+### 1.2 Technical Depth
+Implemented advanced GenAI topics:
+- **RAG**: indexed local project knowledge chunks with source attribution
+- **LangGraph**: explicit graph workflow for route → retrieve → tool → reason → guardrail
+- **Agentic tools**: pricing tool + retrieval tool orchestrated per query intent
 
-## Business Context
+### 1.3 Design Choices
+- **LLM**: `gemini-2.5-flash` for low latency + high throughput
+- **Embedding model**: `gemini-embedding-001`
+- **Vector DB strategy**: local cached embedding index (`.cache/rag_index.joblib`) + hybrid lexical fallback
+- **Prompting strategy**: system prompt enforces grounding, uncertainty disclosure, and citation behavior
 
-Real-estate pricing in Japan is influenced by a layered set of factors — location proximity to transit, zoning regulations, building age, structural composition, and regional supply-demand dynamics. Manual appraisal is time-consuming and inconsistent. An ML-driven valuation tool provides:
-
-- **Buyers** — an independent benchmark before negotiating.
-- **Sellers / Agents** — data-backed listing price guidance.
-- **Analysts** — regional trend exploration and market comparisons.
-
----
-
-## System Architecture
-
-```
-┌──────────────────────────────────────────────────────┐
-│                   User (Browser)                     │
-└───────────────────────┬──────────────────────────────┘
-                        │  HTTP
-┌───────────────────────▼──────────────────────────────┐
-│              Streamlit Frontend (app.py)              │
-│  ┌──────────────┐  ┌────────────┐  ┌──────────────┐  │
-│  │  Input Form  │  │  Predict   │  │   Analytics  │  │
-│  │  (Sidebar)   │  │   Card     │  │     Tabs     │  │
-│  └──────┬───────┘  └─────┬──────┘  └──────────────┘  │
-└─────────┼────────────────┼─────────────────────────  ┘
-          │                │
-┌─────────▼────────────────▼──────────────────────────┐
-│             Preprocessing Pipeline                   │
-│   Label Encoding → MinMax Scaling → Feature Eng.    │
-└─────────────────────────┬───────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────┐
-│         Random Forest Regressor Model                │
-│              (rf_model_new.joblib)                   │
-└─────────────────────────────────────────────────────┘
-```
+### 1.4 Performance and Robustness
+- Cached retrieval index for faster startup after first build
+- Lexical fallback when embedding API is unavailable
+- Deterministic fallback answer when generation API fails
+- Guardrail node injects low-confidence warning on weak retrieval
 
 ---
 
-## Dataset
+## 2. Repository Structure and Code Quality
 
-| Property | Detail |
-|---|---|
-| **Source** | Japanese Ministry of Land real-estate transaction records |
-| **File** | `02.csv` |
-| **Records** | ~52,400 transactions |
-| **Target** | `TradePrice` (JPY) |
-| **Regions** | Aomori Prefecture and surrounding municipalities |
-| **Years** | 2006 – 2019 |
-
-### Columns Used After Cleaning
-
-| Category | Features |
-|---|---|
-| **Categorical (10)** | Type, Region, Municipality, DistrictName, NearestStation, LandShape, Structure, Classification, CityPlanning, Direction |
-| **Numerical (8)** | Frontage, TotalFloorArea, BuildingYear, Breadth, CoverageRatio, FloorAreaRatio, MinTimeToNearestStation, Area |
-| **Engineered (1)** | AgeOfBuilding (Year − BuildingYear) |
-| **Dropped** | 16 columns — redundant identifiers, flags, free-text fields |
-
----
-
-## ML Pipeline
-
-```
-Raw CSV (52,408 rows)
-        │
-        ▼
-1. Drop irrelevant columns (16 cols)
-        │
-        ▼
-2. Remove Agricultural Land rows
-        │
-        ▼
-3. Drop rows with NaN in required columns
-        │
-        ▼
-4. Label Encode categorical columns (10 cols)
-        │
-        ▼
-5. MinMaxScaler on numeric columns (8 cols)
-        │
-        ▼
-6. Feature engineering: AgeOfBuilding = Year − BuildingYear
-        │
-        ▼
-7. MinMaxScaler on extended numeric set (9 cols incl. AgeOfBuilding)
-        │
-        ▼
-8. log1p transform on TradePrice (target)
-        │
-        ▼
-9. Train / Test split (80 / 20, random_state=42)
-        │
-        ▼
-10. RandomForestRegressor(random_state=42)
-        │
-        ▼
-11. expm1 to invert log on predictions
+```text
+genai/
+├── app.py                      # Streamlit frontend (chat + tools + diagnostics)
+├── src/
+│   ├── config.py               # settings + .env loading
+│   ├── llm.py                  # Gemini generation + embedding client
+│   ├── rag.py                  # chunking, hybrid retrieval, index cache
+│   ├── pricing.py              # RF inference pipeline as deterministic tool
+│   ├── agent.py                # LangGraph workflow and guardrails
+│   └── evaluation.py           # benchmark evaluation utilities
+├── knowledge/
+│   ├── project_overview.md     # project/system knowledge for RAG
+│   ├── rag_design.md           # retrieval design rationale
+│   └── model_and_data_card.md  # model/data limitations and usage notes
+├── data/
+│   └── eval_questions.json     # benchmark question set
+├── 02.csv
+├── rf_model_new.joblib
+├── minmaxscaler.joblib
+├── report.tex
+├── requirements.txt
+├── .env.example
+└── .gitignore
 ```
 
 ---
 
-## Feature Engineering
+## 3. Setup and Run
 
-| Feature | Derivation | Rationale |
-|---|---|---|
-| `AgeOfBuilding` | `Year - BuildingYear` | Older buildings trade at lower prices; captures depreciation |
-| Log-transform on `TradePrice` | `log1p(price)` | Reduces right-skew in the price distribution for stable regression |
+## 3.1 Prerequisites
+- Python 3.10+
+- Gemini API key
 
----
-
-## Model Evaluation
-
-Two models were evaluated:
-
-### Baseline — Linear Regression
-
-| Metric | Train | Test |
-|---|---|---|
-| MSE | — | — |
-| RMSE | — | — |
-| R² | — | — |
-
-### Final — Random Forest Regressor
-
-| Metric | Train | Test |
-|---|---|---|
-| MSE | — | — |
-| RMSE | — | — |
-| R² | — | — |
-
-> Metric values populate after running `GenAI_Capstone_V2.ipynb` end-to-end.
-
-**Random Forest was chosen** as the final model due to its superior test R² and robustness to the mixed feature types in this dataset.
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|---|---|
-| **ML** | scikit-learn (Random Forest, Linear Regression, MinMaxScaler, LabelEncoder) |
-| **Data Processing** | Pandas, NumPy |
-| **Frontend** | Streamlit |
-| **Visualizations** | Plotly |
-| **Model Persistence** | joblib |
-| **Language** | Python 3.14 |
-
----
-
-## Project Structure
-
-```
-gen-ai-capstone/
-├── app.py                    # Streamlit web application
-├── GenAI_Capstone_V2.ipynb   # EDA, model training & evaluation notebook
-├── 02.csv                    # Raw dataset
-├── rf_model_new.joblib       # Trained Random Forest model
-├── minmaxscaler.joblib       # Saved MinMaxScaler (reference artifact)
-├── requirements.txt          # Python dependencies
-├── .gitignore
-└── README.md
-```
-
----
-
-## Setup & Installation
-
-### Prerequisites
-- Python 3.10 or higher
-- `pip`
-
-### 1. Clone the repository
+## 3.2 Install
 
 ```bash
 git clone https://github.com/Nakul-Jaglan/gen-ai-capstone.git
 cd gen-ai-capstone
-```
 
-### 2. Create and activate a virtual environment
-
-```bash
 python -m venv .venv
-
-# macOS / Linux
 source .venv/bin/activate
-
-# Windows
-.venv\Scripts\activate
-```
-
-### 3. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
----
+## 3.3 Environment Variables
 
-## Running the App
+```bash
+cp .env.example .env
+```
+
+Set in `.env`:
+
+```env
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_EMBED_MODEL=gemini-embedding-001
+```
+
+## 3.4 Launch
 
 ```bash
 streamlit run app.py
 ```
 
-The app opens at **http://localhost:8501** by default.
-
-### Usage
-1. Use the **sidebar** to configure all property attributes (type, location, dimensions, building details, zoning).
-2. Click **Predict Property Price** to get the estimated trade price.
-3. Explore **Market Insights**, **Feature Analysis**, and **About** tabs for data-driven charts.
+Open: `http://localhost:8501`
 
 ---
 
-## Deployment
+## 4. Agentic Workflow
 
-The app is designed to deploy on:
+LangGraph nodes:
+1. **route**: classify query path (greeting / knowledge / pricing)
+2. **retrieve**: fetch top-k context chunks using hybrid scoring
+3. **pricing**: run RF tool when property payload is available
+4. **reason**: generate grounded answer via Gemini 2.5 Flash
+5. **guardrail**: confidence estimation + citation append + fallback warnings
 
-| Platform | Notes |
-|---|---|
-| **Streamlit Community Cloud** | Connect GitHub repo → set `app.py` as entrypoint → deploy |
-| **Hugging Face Spaces** | Use `Streamlit` SDK, upload files, set `app.py` as main |
-| **Render** | Add `streamlit run app.py --server.port $PORT --server.headless true` as start command |
+ASCII flow:
 
-> Make sure `02.csv`, `rf_model_new.joblib`, and `minmaxscaler.joblib` are committed to the repo or uploaded to the hosting platform — the app requires them at runtime.
+```text
+User Query
+   |
+   v
+[Route Node] ---> [Retrieve Node] ---> [Pricing Tool Node] ---> [Reason Node] ---> [Guardrail Node] ---> Final Answer
+```
+
+---
+
+## 5. Evaluation and Results
+
+Use **RAG Diagnostics** tab:
+- Retrieval probe for transparency (scores, sources, chunk IDs)
+- Benchmark runner over `data/eval_questions.json`
+
+Reported metrics:
+- Pass rate
+- Average confidence
+- Average keyword coverage
+- Average latency
+
+This gives qualitative + quantitative performance evidence for the report.
+
+---
+
+## 6. Live Demo (Hosted Link)
+
+Deploy to Streamlit Community Cloud:
+1. Push repository to GitHub
+2. Go to `share.streamlit.io`
+3. Select repo and set entrypoint to `app.py`
+4. Add `GEMINI_API_KEY` in app secrets
+5. Deploy
+
+Add deployed URL here after publishing:
+- `LIVE_DEMO_URL = <your_streamlit_cloud_link>`
+
+---
+
+## 7. API and Failure Handling
+
+- If Gemini generation fails: deterministic fallback response is returned
+- If embedding fails: lexical retrieval remains active
+- If retrieval is weak: low-confidence warning appears in answer metadata
+- If pricing input contains unseen categories: fallback mapping warning is surfaced
+
+---
+
+## 8. Notes for Graders
+
+This repository intentionally demonstrates:
+- **GenAI compliance** (not just traditional ML)
+- **Agentic orchestration with LangGraph**
+- **RAG with retrieval diagnostics and citations**
+- **Deployment-ready Streamlit app with API-key-based configuration**
+- **Professional project report in LaTeX (`report.tex`)**

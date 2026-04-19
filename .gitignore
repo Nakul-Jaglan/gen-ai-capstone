@@ -1,7 +1,7 @@
 # Virtual environment
 .venv/
 venv/
-env/
+.env
 
 # Python
 __pycache__/
@@ -31,3 +31,8 @@ Thumbs.db
 
 # Streamlit
 .streamlit/
+
+# Project caches and generated artifacts
+.cache/
+*.log
+report.pdf

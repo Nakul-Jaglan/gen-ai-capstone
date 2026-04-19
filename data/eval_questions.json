@@ -1,0 +1,26 @@
+[
+  {
+    "question": "How does this project combine machine learning with agentic AI?",
+    "expected_keywords": ["LangGraph", "RAG", "pricing tool", "retrieval"],
+    "coverage_threshold": 0.5,
+    "expected_sources": ["project_overview.md", "rag_design.md"]
+  },
+  {
+    "question": "What retrieval strategy is used and why not pure vector search?",
+    "expected_keywords": ["hybrid", "vector", "lexical", "alpha"],
+    "coverage_threshold": 0.5,
+    "expected_sources": ["rag_design.md"]
+  },
+  {
+    "question": "Which features does the pricing model use and what is the engineered feature?",
+    "expected_keywords": ["categorical", "numerical", "AgeOfBuilding"],
+    "coverage_threshold": 0.5,
+    "expected_sources": ["model_and_data_card.md"]
+  },
+  {
+    "question": "What happens if retrieval quality is weak or embeddings fail?",
+    "expected_keywords": ["fallback", "lexical retrieval", "low-confidence"],
+    "coverage_threshold": 0.33,
+    "expected_sources": ["rag_design.md", "project_overview.md"]
+  }
+]

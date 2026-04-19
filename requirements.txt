@@ -4,3 +4,5 @@ scikit-learn==1.8.0
 streamlit==1.54.0
 plotly==6.5.2
 joblib==1.5.3
+langgraph==1.1.8
+groq==0.20.0
